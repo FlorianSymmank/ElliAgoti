@@ -2,7 +2,7 @@ Activate venv
 `venv\Scripts\activate.bat`
 
 scipt ausführen
-`py python <filename>` 
+`py main.py <filename>` 
 
 deactivate venv
 `deactivate`
