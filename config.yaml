@@ -1,0 +1,4 @@
+---
+rolling_avg:
+  index_base_column: 2
+  window_size: 3
