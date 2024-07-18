@@ -267,7 +267,6 @@
 
                 const rect = canvas.getBoundingClientRect();
                 if (drag) {
-                    const rect = canvas.getBoundingClientRect();
                     selectionRect.w = (evt.clientX - rect.left) - selectionRect.startX;
                     selectionContext.globalAlpha = 0.5;
                     selectionContext.clearRect(0, 0, canvas.width, canvas.height);
@@ -302,10 +301,18 @@
         }
 
         function resetZoom() {
+
+            if (chart == undefined)
+            return;
+
             chart.resetZoom();
         }
 
         function dataDecimation() {
+
+            if (chart == undefined)
+                return;
+
             chart.options.plugins.decimation.algorithm = 'lttb';
             chart.options.plugins.decimation.enabled = true;
             chart.options.plugins.decimation.samples = 500;
@@ -314,6 +321,10 @@
         }
 
         function noDataDecimation() {
+            
+            if (chart == undefined)
+            return;
+
             chart.options.plugins.decimation.enabled = false;
             chart.update();
         }
