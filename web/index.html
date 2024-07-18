@@ -19,17 +19,35 @@
 
         <div class="input-group mb-3">
             <label class="input-group-text" for="csvFile">Upload Agouti File</label>
-            <input type="file" class="form-control" id="csvFile" accept=".txt" >
+            <input type="file" class="form-control" id="csvFile" accept=".txt">
         </div>
 
 
         <div>
             <canvas id="overlay" width="600" height="400" style="position:absolute;pointer-events:none;"></canvas>
-            <canvas id="chartJSContainer" width="600" height="400"></canvas>
+            <canvas id="chartJSContainer" width="600" height="400"></canvas>       
+        </div>
+        <div class="input-group mb-3">
+            <button class="btn btn-primary" onclick="resetZoom()">Reset Zoom</button>
+            <button class="btn btn-primary" onclick="dataDecimation()">dataDecimation</button>
+            <button class="btn btn-primary" onclick="noDataDecimation()">noDataDecimation</button>
         </div>
 
 
-        <h2>Analysis</h2>
+        <div class="row">
+            <div class="col">
+                <h2>Analysis</h2>
+            </div>
+            <div class="col">
+                <label for="minIndex">Min Index:</label>
+                <span id="minIndex"></span>
+            </div>
+            <div class="col">
+                <label for="maxIndex">Max Index:</label>
+                <span id="maxIndex"></span>
+            </div>
+        </div>
+
         <table class="table">
             <thead>
                 <tr>
@@ -72,245 +90,298 @@
                 </tr>
             </tbody>
         </table>
-
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-        <script>
-            const fileInput = document.getElementById('csvFile');
-            fileInput.addEventListener('change', handleFileUpload);
-
-            function handleFileUpload(event) {
-                const file = event.target.files[0];
-                const reader = new FileReader();
-
-                reader.onload = function (e) {
-                    const contents = e.target.result;
-                    const data = parseCSV(contents);
-                    const formattedData = data.map(row => [parseFloat(row[0]), parseFloat(row[1]), parseFloat(row[2])]);
-
-                    const rollingAverageX = calculateRollingAverage(formattedData, 0, 5);
-                    const rollingAverageY = calculateRollingAverage(formattedData, 1, 5);
-                    const rollingAverageZ = calculateRollingAverage(formattedData, 2, 5);
-
-                    formattedData.forEach((row, index) => {
-                        row.push(rollingAverageX[index]);
-                        row.push(rollingAverageY[index]);
-                        row.push(rollingAverageZ[index]);
-                    });
-
-                    createChart(formattedData);
-                };
-
-                reader.readAsText(file);
-            }
-
-            function calculateRollingAverage(data, column, windowSize) {
-                const rollingAverage = [];
-                for (let i = 0; i < data.length; i++) {
-                    let sum = 0;
-                    let count = 0;
-                    for (let j = Math.max(0, i - windowSize + 1); j <= i; j++) {
-                        sum += data[j][column];
-                        count++;
-                    }
-                    const average = sum / count;
-                    rollingAverage.push(average);
-                }
-                return rollingAverage;
-            };
-
-            function parseCSV(contents) {
-                const rows = contents.split('\n');
-                const data = rows.map(row => row.split('\t'));
-
-                return data;
-            }
-
-            function createChart(data) {
-
-                const s = [{ column: 0, label: 'X' }, { column: 1, label: 'Y' }, { column: 2, label: 'Z' }, { column: 3, label: 'Rolling Average X' }, { column: 4, label: 'Rolling Average Y' }, { column: 5, label: 'Rolling Average Z' }];
-                const series = s.map((s) => {
-                    return {
-                        label: s.label,
-                        data: data.map((row, index) => ({ x: index + 1, y: row[s.column] })),
-                        fill: false,
-                        tension: 0,
-                        pointRadius: 0,
-                        borderWidth: 1,
-                    }
-                });
-
-                data = {
-                    labels: data.map((row, index) => index + 1),
-
-                    datasets: series
-                };
-
-                const options = {
-                    type: 'line',
-                    data: data,
-
-                    options: {
-
-                        // Turn off animations and data parsing for performance
-                        animation: false,
-                        parsing: false,
-
-                        // plugins: {
-                        //     decimation: {
-                        //         enabled: true,
-                        //         algorithm: 'lttb',
-                        //         samples: 500,
-                        //     }
-                        // },
-
-                        // interaction: {
-                        //     mode: 'nearest',
-                        //     axis: 'x',
-                        //     intersect: false
-                        // },
-
-                        responsive: true,
-
-                        scales: {
-                            x: {
-                                type: 'time',
-                                // time: {
-                                //     unit: 'millisecond'
-                                // },
-                                ticks: {
-                                    source: 'auto',
-                                    // Disabled rotation for performance
-                                    maxRotation: 0,
-                                    autoSkip: true,
-                                }
-                            },
-                            y: {
-                                ticks: {
-                                    reverse: false
-                                }
-                            }
-                        }
-                    },
-                }
-
-                const canvas = document.getElementById('chartJSContainer')
-                const ctx = canvas.getContext('2d');
-
-                const chart = new Chart(ctx, options);
-
-                var startIndex = 0;
-                overlay.width = canvas.width;
-                overlay.height = canvas.height;
-                var selectionContext = overlay.getContext('2d');
-                var selectionRect = {
-                    w: 0,
-                    startX: 0,
-                    startY: 0
-                };
-
-                var drag = false;
-                canvas.addEventListener('pointerdown', evt => {
-                    const points = chart.getElementsAtEventForMode(evt, 'index', {
-                        intersect: false
-                    });
-                    startIndex = points[0].index;
-                    const rect = canvas.getBoundingClientRect();
-                    selectionRect.startX = evt.clientX - rect.left;
-                    selectionRect.startY = chart.chartArea.top;
-                    drag = true;
-                });
-
-                canvas.addEventListener('pointermove', evt => {
-
-                    const rect = canvas.getBoundingClientRect();
-                    if (drag) {
-                        const rect = canvas.getBoundingClientRect();
-                        selectionRect.w = (evt.clientX - rect.left) - selectionRect.startX;
-                        selectionContext.globalAlpha = 0.5;
-                        selectionContext.clearRect(0, 0, canvas.width, canvas.height);
-                        selectionContext.fillRect(selectionRect.startX,
-                            selectionRect.startY,
-                            selectionRect.w,
-                            chart.chartArea.bottom - chart.chartArea.top);
-                    } else {
-                        selectionContext.clearRect(0, 0, canvas.width, canvas.height);
-                        var x = evt.clientX - rect.left;
-                        if (x > chart.chartArea.left) {
-                            selectionContext.fillRect(x,
-                                chart.chartArea.top,
-                                1,
-                                chart.chartArea.bottom - chart.chartArea.top);
-                        }
-                    }
-                });
-                canvas.addEventListener('pointerup', evt => {
-
-                    const points = chart.getElementsAtEventForMode(evt, 'index', {
-                        intersect: false
-                    });
-                    drag = false;
-
-                    analyzeData(data.datasets, startIndex, points[0].index);
-                });
-            }
-
-            function findMax(data, start, end, column) {
-                let max = data[column].data[start].y;
-                let maxIndex = start;
-
-                for (let i = start + 1; i <= end; i++) {
-                    if (data[column].data[i].y > max) {
-                        max = data[column].data[i].y;
-                        maxIndex = i;
-                    }
-                }
-
-                return { max: max, maxIndex: maxIndex };
-            }
-
-            function findMin(data, start, end, column) {
-                let min = data[column].data[start].y;
-                let minIndex = start;
-
-                for (let i = start + 1; i <= end; i++) {
-                    if (data[column].data[i].y < min) {
-                        min = data[column].data[i].y;
-                        minIndex = i;
-                    }
-                }
-
-                return { min: min, minIndex: minIndex };
-            }
-
-            function analyzeData(data, start, end) {
-
-                const columns = ['x', 'y', 'z'];
-
-                for (let i = 0; i < columns.length; i++) {
-
-                    const max = findMax(data, start, end, i);
-                    const maxPercentage = (max.maxIndex - start) / (end - start);
-                    const min = findMin(data, start, end, i);
-                    const minPercentage = (min.minIndex - start) / (end - start);
-
-                    document.getElementById(`${columns[i]}Max`).innerText = max.max;
-                    document.getElementById(`${columns[i]}MaxIndex`).innerText = max.maxIndex;
-                    document.getElementById(`${columns[i]}MaxPercentage`).innerText = maxPercentage;
-                    document.getElementById(`${columns[i]}Min`).innerText = min.min;
-                    document.getElementById(`${columns[i]}MinIndex`).innerText = min.minIndex;
-                    document.getElementById(`${columns[i]}MinPercentage`).innerText = minPercentage;
-                }
-            }
-
-        </script>
     </div>
 
+    <script>
+        const fileInput = document.getElementById('csvFile');
+        fileInput.addEventListener('change', handleFileUpload);
+        let chart;
 
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                const contents = e.target.result;
+                const data = parseCSV(contents);
+                const formattedData = data.map(row => [parseFloat(row[0]), parseFloat(row[1]), parseFloat(row[2])]);
+
+                const rollingAverageX = calculateRollingAverage(formattedData, 0, 5);
+                const rollingAverageY = calculateRollingAverage(formattedData, 1, 5);
+                const rollingAverageZ = calculateRollingAverage(formattedData, 2, 5);
+
+                formattedData.forEach((row, index) => {
+                    row.push(rollingAverageX[index]);
+                    row.push(rollingAverageY[index]);
+                    row.push(rollingAverageZ[index]);
+                });
+
+                createChart(formattedData);
+            };
+
+            reader.readAsText(file);
+        }
+
+        function calculateRollingAverage(data, column, windowSize) {
+            const rollingAverage = [];
+            for (let i = 0; i < data.length; i++) {
+                let sum = 0;
+                let count = 0;
+                for (let j = Math.max(0, i - windowSize + 1); j <= i; j++) {
+                    sum += data[j][column];
+                    count++;
+                }
+                const average = sum / count;
+                rollingAverage.push(average);
+            }
+            return rollingAverage;
+        };
+
+        function parseCSV(contents) {
+            const rows = contents.split('\n');
+            const data = rows.map(row => row.split('\t'));
+
+            return data;
+        }
+
+        function createChart(data) {
+
+            const s = [{ column: 0, label: 'X' }, { column: 1, label: 'Y' }, { column: 2, label: 'Z' }, { column: 3, label: 'Rolling Average X' }, { column: 4, label: 'Rolling Average Y' }, { column: 5, label: 'Rolling Average Z' }];
+            const series = s.map((s) => {
+                return {
+                    label: s.label,
+                    data: data.map((row, index) => ({ x: index + 1, y: row[s.column] })),
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    borderWidth: 1,
+                }
+            });
+
+            data = {
+                labels: data.map((row, index) => index + 1),
+
+                datasets: series
+            };
+
+            const options = {
+                type: 'line',
+                data: data,
+
+                options: {
+
+                    // Turn off animations and data parsing for performance
+                    animation: false,
+                    parsing: false,
+
+                    plugins: {
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x',
+                                modifierKey: 'ctrl',
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                    modifierKey: 'ctrl',
+                                },
+
+                                mode: 'x'
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            usePointStyle: true,
+                            callbacks: {
+                                title: (data) => { 
+                                    return `${data[0].dataset.label} Index: ${data[0].parsed.x}`},
+
+                                label: (data) => {
+                                    return data.parsed.y;
+                                }
+                            },
+                        },
+                    },
+
+                    // interaction: {
+                    //     mode: 'nearest',
+                    //     axis: 'x',
+                    //     intersect: false
+                    // },
+
+                    responsive: true,
+
+                    scales: {
+                        x: {
+                            type: 'time',
+                            ticks: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                reverse: false
+                            }
+                        }
+                    }
+                },
+            }
+
+            const canvas = document.getElementById('chartJSContainer')
+            const ctx = canvas.getContext('2d');
+
+            chart = new Chart(ctx, options);
+
+            var startIndex = 0;
+            overlay.width = canvas.width;
+            overlay.height = canvas.height;
+            var selectionContext = overlay.getContext('2d');
+            var selectionRect = {
+                w: 0,
+                startX: 0,
+                startY: 0
+            };
+
+            var drag = false;
+            canvas.addEventListener('pointerdown', evt => {
+
+                if (evt.ctrlKey)
+                    return;
+
+                const points = chart.getElementsAtEventForMode(evt, 'index', {
+                    intersect: false
+                });
+
+                if (points[0] == undefined)
+                    return;
+
+                startIndex = points[0].index;
+                const rect = canvas.getBoundingClientRect();
+                selectionRect.startX = evt.clientX - rect.left;
+                selectionRect.startY = chart.chartArea.top;
+                drag = true;
+            });
+
+            canvas.addEventListener('pointermove', evt => {
+
+                const rect = canvas.getBoundingClientRect();
+                if (drag) {
+                    const rect = canvas.getBoundingClientRect();
+                    selectionRect.w = (evt.clientX - rect.left) - selectionRect.startX;
+                    selectionContext.globalAlpha = 0.5;
+                    selectionContext.clearRect(0, 0, canvas.width, canvas.height);
+                    selectionContext.fillRect(selectionRect.startX,
+                        selectionRect.startY,
+                        selectionRect.w,
+                        chart.chartArea.bottom - chart.chartArea.top);
+                } else {
+                    selectionContext.clearRect(0, 0, canvas.width, canvas.height);
+                    var x = evt.clientX - rect.left;
+                    if (x > chart.chartArea.left) {
+                        selectionContext.fillRect(x,
+                            chart.chartArea.top,
+                            1,
+                            chart.chartArea.bottom - chart.chartArea.top);
+                    }
+                }
+            });
+            canvas.addEventListener('pointerup', evt => {
+
+                const points = chart.getElementsAtEventForMode(evt, 'index', {
+                    intersect: false
+                });
+
+                if (points[0] == undefined)
+                    return;
+
+                drag = false;
+
+                analyzeData(data.datasets, startIndex, points[0].index);
+            });
+        }
+
+        function resetZoom() {
+            chart.resetZoom();
+        }
+
+        function dataDecimation() {
+            chart.options.plugins.decimation.algorithm = 'lttb';
+            chart.options.plugins.decimation.enabled = true;
+            chart.options.plugins.decimation.samples = 500;
+
+            chart.update();
+        }
+
+        function noDataDecimation() {
+            chart.options.plugins.decimation.enabled = false;
+            chart.update();
+        }
+
+        function findMax(data, start, end, column) {
+            let max = data[column].data[start].y;
+            let maxIndex = start;
+
+            for (let i = start + 1; i <= end; i++) {
+                if (data[column].data[i].y > max) {
+                    max = data[column].data[i].y;
+                    maxIndex = i;
+                }
+            }
+
+            return { max: max, maxIndex: maxIndex };
+        }
+
+        function findMin(data, start, end, column) {
+            let min = data[column].data[start].y;
+            let minIndex = start;
+
+            for (let i = start + 1; i <= end; i++) {
+                if (data[column].data[i].y < min) {
+                    min = data[column].data[i].y;
+                    minIndex = i;
+                }
+            }
+
+            return { min: min, minIndex: minIndex };
+        }
+
+        function analyzeData(data, start, end) {
+
+            document.getElementById('minIndex').innerText = start;
+            document.getElementById('maxIndex').innerText = end;
+
+            const columns = ['x', 'y', 'z'];
+
+            for (let i = 0; i < columns.length; i++) {
+
+                const max = findMax(data, start, end, i);
+                const maxPercentage = (max.maxIndex - start) / (end - start);
+                const min = findMin(data, start, end, i);
+                const minPercentage = (min.minIndex - start) / (end - start);
+
+                document.getElementById(`${columns[i]}Max`).innerText = max.max;
+                document.getElementById(`${columns[i]}MaxIndex`).innerText = max.maxIndex;
+                document.getElementById(`${columns[i]}MaxPercentage`).innerText = maxPercentage;
+                document.getElementById(`${columns[i]}Min`).innerText = min.min;
+                document.getElementById(`${columns[i]}MinIndex`).innerText = min.minIndex;
+                document.getElementById(`${columns[i]}MinPercentage`).innerText = minPercentage;
+            }
+        }
+
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script> -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         crossorigin="anonymous"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.1.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.0/chartjs-adapter-moment.js"></script>
 </body>
 
 </html>
