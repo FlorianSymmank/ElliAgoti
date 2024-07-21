@@ -31,13 +31,23 @@
             <button class="btn btn-primary" onclick="resetZoom()">Reset Zoom</button>
             <button class="btn btn-primary" onclick="dataDecimation()">dataDecimation</button>
             <button class="btn btn-primary" onclick="noDataDecimation()">noDataDecimation</button>
+
+        </div>
+
+        <div class="row mb-3">
+            <label for="selectAuCMethod" class="col-form-label col-md-4">Area Under Curve Method</label>
+            <select id="selectAuCMethod" class="form-select col" aria-label="Select Area Under Curve Method">
+                <option value="0">Left rule</option>
+                <option value="1">Midpoint rule</option>
+                <option value="2">Right rule</option>
+            </select>
         </div>
 
         <div class="input-group mb-3">
-            <label for="windowSizeSlider" class="form-label">Moving Average Window Size:</label>
-            <input type="range" class="form-range" min="1" max="1000" value="500" id="windowSizeSlider"
+            <label for="windowSizeSlider" class="col-form-label col-md-3">Moving Average Window Size:</label>
+            <span class="col-form-label col-md-1" id="windowSizeValue">5</span>
+            <input type="range" class="form-range col" min="1" max="1000" value="500" id="windowSizeSlider"
                 onchange="updateWindowSize(this.value)">
-            <span id="windowSizeValue">5</span>
         </div>
 
 
@@ -65,6 +75,7 @@
                     <th scope="col">Min</th>
                     <th scope="col">Min Index</th>
                     <th scope="col">Min Percentage</th>
+                    <th scope="col">Area Under Curve</th>
                 </tr>
             </thead>
             <tbody>
@@ -76,6 +87,7 @@
                     <td id="xMin"></td>
                     <td id="xMinIndex"></td>
                     <td id="xMinPercentage"></td>
+                    <td id="xAreaUnderCurve"></td>
                 </tr>
                 <tr>
                     <th scope="row">Y</th>
@@ -85,6 +97,7 @@
                     <td id="yMin"></td>
                     <td id="yMinIndex"></td>
                     <td id="yMinPercentage"></td>
+                    <td id="yAreaUnderCurve"></td>
                 </tr>
                 <tr>
                     <th scope="row">Z</th>
@@ -94,6 +107,7 @@
                     <td id="zMin"></td>
                     <td id="zMinIndex"></td>
                     <td id="zMinPercentage"></td>
+                    <td id="zAreaUnderCurve"></td>
                 </tr>
             </tbody>
         </table>
@@ -166,7 +180,7 @@
             const series = s.map((s) => {
                 return {
                     label: s.label,
-                    data: dataWithRollingAverage.map((row, index) => ({ x: index + 1, y: row[s.column] })),
+                    data: dataWithRollingAverage.map((row, index) => ({ x: index, y: row[s.column] })),
                     fill: false,
                     tension: 0,
                     pointRadius: 0,
@@ -239,7 +253,11 @@
                         x: {
                             type: 'time',
                             ticks: {
-                                display: false
+                                display: true,
+                                source: 'auto',
+                                callback: function (value, index, values) {
+                                    return value;
+                                }
                             }
                         },
                         y: {
@@ -319,7 +337,10 @@
 
                 drag = false;
 
-                analyzeData(chartData.datasets, startIndex, points[0].index);
+                let minIndex = Math.min(startIndex, points[0].index);
+                let maxIndex = Math.max(startIndex, points[0].index);
+
+                analyzeData(chartData.datasets, minIndex, maxIndex);
             });
         }
 
@@ -358,11 +379,11 @@
                 return;
 
             const hiddenState = chart.legend.legendItems.map(item => item.hidden);
-            
+
             chart.data = createSeriesData(formattedData);
             chart.update();
 
-            for (let i = 0; i <hiddenState.length; i++) {
+            for (let i = 0; i < hiddenState.length; i++) {
                 if (hiddenState[i] == false)
                     chart.show(i);
                 else
@@ -400,10 +421,43 @@
             return { min: min, minIndex: minIndex };
         }
 
+        function riemannSummationLR(data, start, end, column) {
+            let result = 0;
+            for (let i = start; i < end; i++) {
+                const dx = data[column].data[i + 1].x - data[column].data[i].x;
+                const integral = Math.abs(data[column].data[i].y) * dx;
+                result += integral;
+            }
+            return result;
+        }
+
+        function riemannSummationMR(data, start, end, column) {
+            let result = 0;
+            for (let i = start; i < end; i++) {
+                const dx = data[column].data[i + 1].x - data[column].data[i].x;
+                const integral = (Math.abs(data[column].data[i].y) + Math.abs(data[column].data[i + 1].y)) / 2 * dx;
+                result += integral;
+            }
+            return result;
+        }
+
+        function riemannSummationRR(data, start, end, column) {
+            let result = 0;
+            for (let i = start; i < end; i++) {
+                const dx = data[column].data[i + 1].x - data[column].data[i].x;
+                const integral = Math.abs(data[column].data[i + 1].y) * dx;
+                result += integral;
+            }
+            return result;
+        }
+
+
         function analyzeData(data, start, end) {
 
             document.getElementById('minIndex').innerText = start;
             document.getElementById('maxIndex').innerText = end;
+            selectedMethod = document.getElementById('selectAuCMethod').value;
+            methods = [riemannSummationLR, riemannSummationMR, riemannSummationRR];
 
             const columns = ['x', 'y', 'z'];
 
@@ -413,6 +467,7 @@
                 const maxPercentage = (max.maxIndex - start) / (end - start);
                 const min = findMin(data, start, end, i);
                 const minPercentage = (min.minIndex - start) / (end - start);
+                const auc = methods[selectedMethod](data, start, end, i);
 
                 document.getElementById(`${columns[i]}Max`).innerText = max.max;
                 document.getElementById(`${columns[i]}MaxIndex`).innerText = max.maxIndex;
@@ -420,6 +475,7 @@
                 document.getElementById(`${columns[i]}Min`).innerText = min.min;
                 document.getElementById(`${columns[i]}MinIndex`).innerText = min.minIndex;
                 document.getElementById(`${columns[i]}MinPercentage`).innerText = minPercentage;
+                document.getElementById(`${columns[i]}AreaUnderCurve`).innerText = auc;
             }
         }
 
