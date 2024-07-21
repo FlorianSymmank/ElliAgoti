@@ -268,9 +268,12 @@
                     }
                 },
             }
-
-            const canvas = document.getElementById('chartJSContainer')
+            const canvas = document.getElementById('chartJSContainer');
             const ctx = canvas.getContext('2d');
+
+            if (chart) {
+                chart.destroy();
+            }
 
             chart = new Chart(ctx, options);
 
@@ -394,6 +397,7 @@
         }
 
         function findMax(data, start, end, column) {
+
             let max = data[column].data[start].y;
             let maxIndex = start;
 
