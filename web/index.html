@@ -15,7 +15,6 @@
 
 <body>
     <div class="container my-md-4">
-        <h1>AGOUTI WALK ANALYZER</h1>
 
         <div class="input-group mb-3">
             <label class="input-group-text" for="csvFile">Upload Agouti File</label>
@@ -25,14 +24,20 @@
 
         <div>
             <canvas id="overlay" width="600" height="400" style="position:absolute;pointer-events:none;"></canvas>
-            <canvas id="chartJSContainer" width="600" height="400"></canvas>
+            <canvas id="chartJSContainer" class="chart-container" style="position: relative; height:50vh; width:100vw"></canvas>
         </div>
-        <div class="input-group mb-3">
-            <button class="btn btn-primary" onclick="resetZoom()">Reset Zoom</button>
-            <button class="btn btn-primary" onclick="dataDecimation()">dataDecimation</button>
-            <button class="btn btn-primary" onclick="noDataDecimation()">noDataDecimation</button>
+        <div class="row">
+            <div class="col">
+                <button class="btn btn-primary md-1" onclick="resetZoom()">Reset Zoom</button>
+            </div>
+            <div class="col justify-content-end d-flex">
+                <div class="form-check my-auto">
+                    <input type="checkbox" class="form-check-input" id="toogleDataDecimation">
+                    <label class="form-check-label" for="toogleDataDecimation" checked="false">Data decimation</label>
+                </div>
+            </div>
+        </div>
 
-        </div>
 
         <div class="row mb-3">
             <label for="selectAuCMethod" class="col-form-label col-md-4">Area Under Curve Method</label>
@@ -45,8 +50,8 @@
 
         <div class="input-group mb-3">
             <label for="windowSizeSlider" class="col-form-label col-md-3">Moving Average Window Size:</label>
-            <span class="col-form-label col-md-1" id="windowSizeValue">5</span>
-            <input type="range" class="form-range col" min="1" max="1000" value="500" id="windowSizeSlider"
+            <span class="col-form-label col-md-1" id="windowSizeValue">500</span>
+            <input type="range" class="form-range col" min="1" max="1000" value="500" id="windowSizeSlider" 
                 onchange="updateWindowSize(this.value)">
         </div>
 
@@ -116,6 +121,15 @@
     <script>
         const fileInput = document.getElementById('csvFile');
         fileInput.addEventListener('change', handleFileUpload);
+        const toogleDataDecimation = document.getElementById('toogleDataDecimation');
+        toogleDataDecimation.addEventListener('change', function () {
+            if (toogleDataDecimation.checked) {
+                dataDecimation();
+            } else {
+                noDataDecimation();
+            }
+        });
+
         const canvas = document.getElementById('chartJSContainer');
         const ctx = canvas.getContext('2d');
         let chart;
