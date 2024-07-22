@@ -90,7 +90,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <th scope="row">X</th>
+                    <th scope="row">Laufrichtung</th>
                     <td id="xMax"></td>
                     <td id="xMaxIndex"></td>
                     <td id="xMaxPercentage"></td>
@@ -100,7 +100,7 @@
                     <td id="xAreaUnderCurve"></td>
                 </tr>
                 <tr>
-                    <th scope="row">Y</th>
+                    <th scope="row">Koerperneigung</th>
                     <td id="yMax"></td>
                     <td id="yMaxIndex"></td>
                     <td id="yMaxPercentage"></td>
@@ -122,7 +122,10 @@
             </tbody>
         </table>
     </div>
-
+    <!-- 
+    x=laufrichtung
+    y=körperneigung
+    -->
     <script>
         
         const fileInput = document.getElementById('csvFile');
@@ -175,8 +178,8 @@
             };
 
             let csv = 'Column,Max,Max Index,Max Percentage,Min,Min Index,Min Percentage,Area Under Curve,Start Index,End Index,Rolling Average Window Size, Area Under Curve Method\n' +
-                `X,${data.xMax},${data.xMaxIndex},${data.xMaxPercentage},${data.xMin},${data.xMinIndex},${data.xMinPercentage},${data.xAreaUnderCurve},${startIndex},${endIndex},${rollingAverageWindowSize},${selectedMethod}\n` +
-                `Y,${data.yMax},${data.yMaxIndex},${data.yMaxPercentage},${data.yMin},${data.yMinIndex},${data.yMinPercentage},${data.yAreaUnderCurve},${startIndex},${endIndex},${rollingAverageWindowSize},${selectedMethod}\n` +
+                `Laufrichtung,${data.xMax},${data.xMaxIndex},${data.xMaxPercentage},${data.xMin},${data.xMinIndex},${data.xMinPercentage},${data.xAreaUnderCurve},${startIndex},${endIndex},${rollingAverageWindowSize},${selectedMethod}\n` +
+                `Koerperneigung,${data.yMax},${data.yMaxIndex},${data.yMaxPercentage},${data.yMin},${data.yMinIndex},${data.yMinPercentage},${data.yAreaUnderCurve},${startIndex},${endIndex},${rollingAverageWindowSize},${selectedMethod}\n` +
                 `Z,${data.zMax},${data.zMaxIndex},${data.zMaxPercentage},${data.zMin},${data.zMinIndex},${data.zMinPercentage},${data.zAreaUnderCurve},${startIndex},${endIndex},${rollingAverageWindowSize},${selectedMethod}\n`;
 
             let csvData = new Blob([csv], { type: 'text/csv' });
@@ -189,7 +192,7 @@
             document.body.removeChild(downloadLink);     
 
             // export series as csv
-            csv = 'Index,X,Y,Z,Rolling Average X,Rolling Average Y,Rolling Average Z\n' +
+            csv = 'Index,Laufrichtung,Koerperneigung,Z,Rolling Average Laufrichtung,Rolling Average Koerperneigung,Rolling Average Z\n' +
                 chart.data.labels.map((label, index) => {
                     return `${label},${chart.data.datasets[0].data[index].y},${chart.data.datasets[1].data[index].y},${chart.data.datasets[2].data[index].y},${chart.data.datasets[3].data[index].y},${chart.data.datasets[4].data[index].y},${chart.data.datasets[5].data[index].y}`;
                 }).join('\n');
@@ -271,7 +274,7 @@
             const windowSize = parseInt(document.getElementById('windowSizeSlider').value);
             let dataWithRollingAverage = addRollingAverage(data, windowSize);
 
-            const s = [{ column: 0, label: 'X' }, { column: 1, label: 'Y' }, { column: 2, label: 'Z' }, { column: 3, label: 'Rolling Average X' }, { column: 4, label: 'Rolling Average Y' }, { column: 5, label: 'Rolling Average Z' }];
+            const s = [{ column: 0, label: 'Laufrichtung' }, { column: 1, label: 'Koerperneigung' }, { column: 2, label: 'Z' }, { column: 3, label: 'Rolling Average Laufrichtung' }, { column: 4, label: 'Rolling Average Koerperneigung' }, { column: 5, label: 'Rolling Average Z' }];
             const series = s.map((s) => {
                 return {
                     label: s.label,
