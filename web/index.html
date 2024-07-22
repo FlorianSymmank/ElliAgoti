@@ -116,8 +116,15 @@
     <script>
         const fileInput = document.getElementById('csvFile');
         fileInput.addEventListener('change', handleFileUpload);
+        const canvas = document.getElementById('chartJSContainer');
+        const ctx = canvas.getContext('2d');
         let chart;
         let formattedData;
+
+        window.addEventListener("load", function () {
+            createChart();
+
+        }, false);
 
         function handleFileUpload(event) {
             const file = event.target.files[0];
@@ -128,7 +135,8 @@
                 const data = parseCSV(contents);
                 formattedData = data.map(row => [parseFloat(row[0]), parseFloat(row[1]), parseFloat(row[2])]);
 
-                createChart(formattedData);
+                chart.data = createSeriesData(formattedData);
+                chart.update();
             };
 
             reader.readAsText(file);
@@ -196,13 +204,11 @@
             return data;
         }
 
-        function createChart(data) {
-
-            const chartData = createSeriesData(data);
+        function createChart() {
 
             const options = {
                 type: 'line',
-                data: chartData,
+                data: [],
 
                 options: {
 
@@ -268,8 +274,7 @@
                     }
                 },
             }
-            const canvas = document.getElementById('chartJSContainer');
-            const ctx = canvas.getContext('2d');
+
 
             if (chart) {
                 chart.destroy();
@@ -343,7 +348,7 @@
                 let minIndex = Math.min(startIndex, points[0].index);
                 let maxIndex = Math.max(startIndex, points[0].index);
 
-                analyzeData(chartData.datasets, minIndex, maxIndex);
+                analyzeData(chart.data.datasets, minIndex, maxIndex);
             });
         }
 
