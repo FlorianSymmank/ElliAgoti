@@ -24,7 +24,8 @@
 
         <div>
             <canvas id="overlay" width="600" height="400" style="position:absolute;pointer-events:none;"></canvas>
-            <canvas id="chartJSContainer" class="chart-container" style="position: relative; height:50vh; width:100vw"></canvas>
+            <canvas id="chartJSContainer" class="chart-container"
+                style="position: relative; height:50vh; width:100vw"></canvas>
         </div>
         <div class="row">
             <div class="col">
@@ -51,23 +52,27 @@
         <div class="input-group mb-3">
             <label for="windowSizeSlider" class="col-form-label col-md-3">Moving Average Window Size:</label>
             <span class="col-form-label col-md-1" id="windowSizeValue">500</span>
-            <input type="range" class="form-range col" min="1" max="1000" value="500" id="windowSizeSlider" 
+            <input type="range" class="form-range col" min="1" max="1000" value="500" id="windowSizeSlider"
                 onchange="updateWindowSize(this.value)">
         </div>
 
 
-        <div class="row">
+        <div class="row my-2">
             <div class="col">
                 <h2>Analysis</h2>
             </div>
             <div class="col">
-                <label for="minIndex">Min Index:</label>
-                <span id="minIndex"></span>
+                <label for="startIndex">Start Index:</label>
+                <span id="startIndex"></span>
             </div>
             <div class="col">
-                <label for="maxIndex">Max Index:</label>
-                <span id="maxIndex"></span>
+                <label for="endIndex">End Index:</label>
+                <span id="endIndex"></span>
             </div>
+            <div class="col justify-content-end d-flex">
+                <button class="btn btn-primary" id="exportAnalysis">Export Analysis</button>
+            </div>
+
         </div>
 
         <table class="table">
@@ -119,16 +124,13 @@
     </div>
 
     <script>
+        
         const fileInput = document.getElementById('csvFile');
         fileInput.addEventListener('change', handleFileUpload);
         const toogleDataDecimation = document.getElementById('toogleDataDecimation');
-        toogleDataDecimation.addEventListener('change', function () {
-            if (toogleDataDecimation.checked) {
-                dataDecimation();
-            } else {
-                noDataDecimation();
-            }
-        });
+        toogleDataDecimation.addEventListener('change', toggleDataDecimation);
+        const exportAnalysisButton = document.getElementById('exportAnalysis');
+        exportAnalysisButton.addEventListener('click', exportAnalysis);
 
         const canvas = document.getElementById('chartJSContainer');
         const ctx = canvas.getContext('2d');
@@ -137,8 +139,79 @@
 
         window.addEventListener("load", function () {
             createChart();
-
         }, false);
+
+        function exportAnalysis() {
+            const title = fileInput.files[0].name;
+
+            // export analysis to csv
+            const rollingAverageWindowSize = parseInt(document.getElementById('windowSizeSlider').value);
+            const startIndex = document.getElementById('startIndex').innerText;
+            const endIndex = document.getElementById('endIndex').innerText;
+            const selectedMethod = document.getElementById('selectAuCMethod').selectedOptions[0].text;
+
+            const data = {
+                xMax: document.getElementById('xMax').innerText,
+                xMaxIndex: document.getElementById('xMaxIndex').innerText,
+                xMaxPercentage: document.getElementById('xMaxPercentage').innerText,
+                xMin: document.getElementById('xMin').innerText,
+                xMinIndex: document.getElementById('xMinIndex').innerText,
+                xMinPercentage: document.getElementById('xMinPercentage').innerText,
+                xAreaUnderCurve: document.getElementById('xAreaUnderCurve').innerText,
+                yMax: document.getElementById('yMax').innerText,
+                yMaxIndex: document.getElementById('yMaxIndex').innerText,
+                yMaxPercentage: document.getElementById('yMaxPercentage').innerText,
+                yMin: document.getElementById('yMin').innerText,
+                yMinIndex: document.getElementById('yMinIndex').innerText,
+                yMinPercentage: document.getElementById('yMinPercentage').innerText,
+                yAreaUnderCurve: document.getElementById('yAreaUnderCurve').innerText,
+                zMax: document.getElementById('zMax').innerText,
+                zMaxIndex: document.getElementById('zMaxIndex').innerText,
+                zMaxPercentage: document.getElementById('zMaxPercentage').innerText,
+                zMin: document.getElementById('zMin').innerText,
+                zMinIndex: document.getElementById('zMinIndex').innerText,
+                zMinPercentage: document.getElementById('zMinPercentage').innerText,
+                zAreaUnderCurve: document.getElementById('zAreaUnderCurve').innerText,
+            };
+
+            let csv = 'Column,Max,Max Index,Max Percentage,Min,Min Index,Min Percentage,Area Under Curve,Start Index,End Index,Rolling Average Window Size, Area Under Curve Method\n' +
+                `X,${data.xMax},${data.xMaxIndex},${data.xMaxPercentage},${data.xMin},${data.xMinIndex},${data.xMinPercentage},${data.xAreaUnderCurve},${startIndex},${endIndex},${rollingAverageWindowSize},${selectedMethod}\n` +
+                `Y,${data.yMax},${data.yMaxIndex},${data.yMaxPercentage},${data.yMin},${data.yMinIndex},${data.yMinPercentage},${data.yAreaUnderCurve},${startIndex},${endIndex},${rollingAverageWindowSize},${selectedMethod}\n` +
+                `Z,${data.zMax},${data.zMaxIndex},${data.zMaxPercentage},${data.zMin},${data.zMinIndex},${data.zMinPercentage},${data.zAreaUnderCurve},${startIndex},${endIndex},${rollingAverageWindowSize},${selectedMethod}\n`;
+
+            let csvData = new Blob([csv], { type: 'text/csv' });
+            let csvUrl = URL.createObjectURL(csvData);
+            let downloadLink = document.createElement('a');
+            downloadLink.href = csvUrl;
+            downloadLink.download = `${title}_analysis.csv`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);     
+
+            // export series as csv
+            csv = 'Index,X,Y,Z,Rolling Average X,Rolling Average Y,Rolling Average Z\n' +
+                chart.data.labels.map((label, index) => {
+                    return `${label},${chart.data.datasets[0].data[index].y},${chart.data.datasets[1].data[index].y},${chart.data.datasets[2].data[index].y},${chart.data.datasets[3].data[index].y},${chart.data.datasets[4].data[index].y},${chart.data.datasets[5].data[index].y}`;
+                }).join('\n');
+
+            csvData = new Blob([csv], { type: 'text/csv' });
+            csvUrl = URL.createObjectURL(csvData);
+            downloadLink = document.createElement('a');
+            downloadLink.href = csvUrl;
+            downloadLink.download = `${title}_series.csv`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+        }
+
+        function toggleDataDecimation() {
+            if (toogleDataDecimation.checked) {
+                dataDecimation();
+            } else {
+                noDataDecimation();
+            }
+        }
 
         function handleFileUpload(event) {
             const file = event.target.files[0];
@@ -296,7 +369,7 @@
 
             chart = new Chart(ctx, options);
 
-            var startIndex = 0;
+            var startDragIndex = 0;
             overlay.width = canvas.width;
             overlay.height = canvas.height;
             var selectionContext = overlay.getContext('2d');
@@ -319,7 +392,7 @@
                 if (points[0] == undefined)
                     return;
 
-                startIndex = points[0].index;
+                startDragIndex = points[0].index;
                 const rect = canvas.getBoundingClientRect();
                 selectionRect.startX = evt.clientX - rect.left;
                 selectionRect.startY = chart.chartArea.top;
@@ -359,10 +432,10 @@
 
                 drag = false;
 
-                let minIndex = Math.min(startIndex, points[0].index);
-                let maxIndex = Math.max(startIndex, points[0].index);
+                let startIndex = Math.min(startDragIndex, points[0].index);
+                let endIndex = Math.max(startDragIndex, points[0].index);
 
-                analyzeData(chart.data.datasets, minIndex, maxIndex);
+                analyzeData(chart.data.datasets, startIndex, endIndex);
             });
         }
 
@@ -477,8 +550,8 @@
 
         function analyzeData(data, start, end) {
 
-            document.getElementById('minIndex').innerText = start;
-            document.getElementById('maxIndex').innerText = end;
+            document.getElementById('startIndex').innerText = start;
+            document.getElementById('endIndex').innerText = end;
             selectedMethod = document.getElementById('selectAuCMethod').value;
             methods = [riemannSummationLR, riemannSummationMR, riemannSummationRR];
 
