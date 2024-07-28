@@ -81,11 +81,10 @@
                     <tr>
                         <th scope="col">#</th>
                         <th scope="col">Max</th>
-                        <th scope="col">Max Index</th>
                         <th scope="col">Max Percentage</th>
                         <th scope="col">Min</th>
-                        <th scope="col">Min Index</th>
                         <th scope="col">Min Percentage</th>
+                        <th scope="col">Null Percentage</th>
                         <th scope="col">Area Under Curve</th>
                     </tr>
                 </thead>
@@ -93,31 +92,28 @@
                     <tr>
                         <th scope="row">Laufrichtung</th>
                         <td id="xMax"></td>
-                        <td id="xMaxIndex"></td>
                         <td id="xMaxPercentage"></td>
                         <td id="xMin"></td>
-                        <td id="xMinIndex"></td>
                         <td id="xMinPercentage"></td>
+                        <td id="xNullPercentage"></td>
                         <td id="xAreaUnderCurve"></td>
                     </tr>
                     <tr>
                         <th scope="row">Koerperneigung</th>
                         <td id="yMax"></td>
-                        <td id="yMaxIndex"></td>
                         <td id="yMaxPercentage"></td>
                         <td id="yMin"></td>
-                        <td id="yMinIndex"></td>
                         <td id="yMinPercentage"></td>
+                        <td id="yNullPercentage"></td>
                         <td id="yAreaUnderCurve"></td>
                     </tr>
                     <tr>
                         <th scope="row">Z</th>
                         <td id="zMax"></td>
-                        <td id="zMaxIndex"></td>
                         <td id="zMaxPercentage"></td>
                         <td id="zMin"></td>
-                        <td id="zMinIndex"></td>
                         <td id="zMinPercentage"></td>
+                        <td id="zNullPercentage"></td>
                         <td id="zAreaUnderCurve"></td>
                     </tr>
                 </tbody>
@@ -519,6 +515,16 @@
             return { min: min, minIndex: minIndex };
         }
 
+        function findZero(data, start, end, column){
+            const threshold = 0.05
+
+            for(let j = start; j < end; j++)
+                if(Math.abs(data[column].data[j].y) < threshold)
+                    return j;
+ 
+            return -1; // Return -1 if no zero value is found within the threshold
+        }
+
         function riemannSummationLR(data, start, end, column) {
             let result = 0;
             for (let i = start; i < end; i++) {
@@ -567,12 +573,15 @@
                 const minPercentage = (min.minIndex - start) / (end - start);
                 const auc = methods[selectedMethod](data, start, end, i);
 
+                const zeroIndex = findZero(data, start, end, i)
+                
+                const zeroPercentage = zeroIndex != -1 ? (zeroIndex - start) / (end - start) : "Keine Null gefunden"
+
                 document.getElementById(`${columns[i]}Max`).innerText = max.max;
-                document.getElementById(`${columns[i]}MaxIndex`).innerText = max.maxIndex;
                 document.getElementById(`${columns[i]}MaxPercentage`).innerText = maxPercentage;
                 document.getElementById(`${columns[i]}Min`).innerText = min.min;
-                document.getElementById(`${columns[i]}MinIndex`).innerText = min.minIndex;
                 document.getElementById(`${columns[i]}MinPercentage`).innerText = minPercentage;
+                document.getElementById(`${columns[i]}NullPercentage`).innerText = zeroPercentage;
                 document.getElementById(`${columns[i]}AreaUnderCurve`).innerText = auc;
             }
         }
