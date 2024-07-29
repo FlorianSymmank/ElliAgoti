@@ -516,7 +516,7 @@
         }
 
         function findZero(data, start, end, column){
-            const threshold = 0.05
+            const threshold = 0.01
 
             for(let j = start; j < end; j++)
                 if(Math.abs(data[column].data[j].y) < threshold)
