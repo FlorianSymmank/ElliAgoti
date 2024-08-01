@@ -86,6 +86,8 @@
                         <th scope="col">Min Percentage</th>
                         <th scope="col">Null Percentage</th>
                         <th scope="col">Area Under Curve</th>
+                        <th scope="col">Area Under Curve Positiv</th>
+                        <th scope="col">Area Under Curve Negativ</th>
                     </tr>
                 </thead>
                 <tbody class="table-group-divider">
@@ -97,6 +99,8 @@
                         <td id="xMinPercentage"></td>
                         <td id="xNullPercentage"></td>
                         <td id="xAreaUnderCurve"></td>
+                        <td id="xAreaUnderCurvePos"></td>
+                        <td id="xAreaUnderCurveNeg"></td>
                     </tr>
                     <tr>
                         <th scope="row">Koerperneigung</th>
@@ -106,6 +110,8 @@
                         <td id="yMinPercentage"></td>
                         <td id="yNullPercentage"></td>
                         <td id="yAreaUnderCurve"></td>
+                        <td id="yAreaUnderCurvePos"></td>
+                        <td id="yAreaUnderCurveNeg"></td>
                     </tr>
                     <tr>
                         <th scope="row">Z</th>
@@ -115,6 +121,8 @@
                         <td id="zMinPercentage"></td>
                         <td id="zNullPercentage"></td>
                         <td id="zAreaUnderCurve"></td>
+                        <td id="zAreaUnderCurvePos"></td>
+                        <td id="zAreaUnderCurveNeg"></td>
                     </tr>
                 </tbody>
             </table>
@@ -527,6 +535,10 @@
 
         function riemannSummationLR(data, start, end, column, areaIsAlwaysPositive = true) {
             let result = 0;
+
+            positive_sum = 0;
+            negative_sum = 0;
+
             for (let i = start; i < end; i++) {
                 const dx = data[column].data[i + 1].x - data[column].data[i].x;
 
@@ -535,26 +547,47 @@
                 else
                     result += data[column].data[i].y * dx;
 
+                area = data[column].data[i].y * dx;
+                if (area > 0)
+                    positive_sum += area
+                else
+                    negative_sum += area
+
             }
-            return result;
+            return {result: result, positive_sum: positive_sum, negative_sum: negative_sum};
         }
 
         function riemannSummationMR(data, start, end, column, areaIsAlwaysPositive = true) {
             let result = 0;
+
+            positive_sum = 0;
+            negative_sum = 0;
+
             for (let i = start; i < end; i++) {
                 const dx = data[column].data[i + 1].x - data[column].data[i].x;
 
                 if (areaIsAlwaysPositive)
                     result += (Math.abs(data[column].data[i].y) + Math.abs(data[column].data[i + 1].y)) / 2 * dx;
                 else
-                    result += (data[column].data[i].y + data[column].data[i + 1].y) / 2 * dx;;
+                    result += (data[column].data[i].y + data[column].data[i + 1].y) / 2 * dx;
+
+                area = (data[column].data[i].y + data[column].data[i + 1].y) / 2 * dx;
+                if (area > 0)
+                    positive_sum += area
+                else
+                    negative_sum += area
 
             }
-            return result;
+            return {result: result, positive_sum: positive_sum, negative_sum: negative_sum};
+
         }
 
         function riemannSummationRR(data, start, end, column, areaIsAlwaysPositive = true) {
             let result = 0;
+
+            positive_sum = 0;
+            negative_sum = 0;
+
             for (let i = start; i < end; i++) {
                 const dx = data[column].data[i + 1].x - data[column].data[i].x;
 
@@ -562,8 +595,16 @@
                     result += Math.abs(data[column].data[i + 1].y) * dx;
                 else
                     result += data[column].data[i + 1].y * dx;
+
+                area = data[column].data[i + 1].y * dx;
+                if (area > 0)
+                    positive_sum += area
+                else
+                    negative_sum += area
+
             }
-            return result;
+            return {result: result, positive_sum: positive_sum, negative_sum: negative_sum};
+
         }
 
 
@@ -585,6 +626,8 @@
 
                 const areaIsAlwaysPositive = columns[i] == 'y' ? false : true;
 
+                console.log(methods[selectedMethod](data, start, end, i, areaIsAlwaysPositive))
+
                 const auc = methods[selectedMethod](data, start, end, i, areaIsAlwaysPositive);
 
                 const zeroIndex = findZero(data, start, end, i)
@@ -596,7 +639,9 @@
                 document.getElementById(`${columns[i]}Min`).innerText = min.min;
                 document.getElementById(`${columns[i]}MinPercentage`).innerText = minPercentage;
                 document.getElementById(`${columns[i]}NullPercentage`).innerText = zeroPercentage;
-                document.getElementById(`${columns[i]}AreaUnderCurve`).innerText = auc;
+                document.getElementById(`${columns[i]}AreaUnderCurve`).innerText = auc.result;
+                document.getElementById(`${columns[i]}AreaUnderCurvePos`).innerText = auc.positive_sum;
+                document.getElementById(`${columns[i]}AreaUnderCurveNeg`).innerText = auc.negative_sum;
             }
         }
 
